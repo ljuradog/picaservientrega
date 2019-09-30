@@ -1,0 +1,1 @@
+* * * * * mysql --user=user --password=123456 kallsonys --execute "call kallsonys.actualizar_orden();"

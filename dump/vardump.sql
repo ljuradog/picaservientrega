@@ -67,7 +67,7 @@ CREATE TABLE `kallsonys_shipment` (
   `city` varchar(50) DEFAULT NULL,
   `state` varchar(2) DEFAULT NULL,
   `zipcode` varchar(5) DEFAULT NULL,
-  `status` varchar(5) DEFAULT NULL,
+  `status` varchar(5) DEFAULT '0',
   PRIMARY KEY (`orderid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -101,9 +101,9 @@ BEGIN
 	DECLARE v_orderid VARCHAR(20)
         DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.orden'));
     DECLARE v_fname VARCHAR(50)
-        DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.primer_nombre'));
+        DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.nombre'));
     DECLARE v_lname VARCHAR(50)
-        DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.segundo_nombre'));
+        DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.apellido'));
     DECLARE v_street VARCHAR(50)
         DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.direccion'));
     DECLARE v_city VARCHAR(50)
@@ -112,9 +112,26 @@ BEGIN
         DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.departamento'));
     DECLARE v_zipcode VARCHAR(50)
         DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.codigo_postal'));
-    DECLARE v_status VARCHAR(50)
+	DECLARE v_items BLOB
+        DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.items'));
+    DECLARE i INT UNSIGNED
         DEFAULT 0;
+    DECLARE v_item BLOB
+        DEFAULT NULL;
+    DECLARE v_itemid VARCHAR(10)
+        DEFAULT NULL;
+    DECLARE v_prodid decimal(2,0)
+        DEFAULT NULL;
+    DECLARE v_pname VARCHAR(50)
+        DEFAULT NULL;
+    DECLARE v_partnum VARCHAR(20)
+        DEFAULT NULL;
+    DECLARE v_price FLOAT4
+        DEFAULT NULL;
+    DECLARE v_quantity decimal(20,0)
+        DEFAULT NULL;
 
+       
     IF v_orderid IS NULL OR v_orderid = '' THEN
         RETURN JSON_OBJECT('estado', 'fallo', 'mensaje', 'El campo orden es obligatorio');
     ELSE
@@ -126,10 +143,42 @@ BEGIN
 	        ))
 	    THEN
 	        RETURN JSON_OBJECT('estado', 'fallo', 'mensaje', 'La orden ya fue registrada');
-        ELSE
-            RETURN JSON_OBJECT('estado', 'paso', 'mensaje', 'Se ha registrado la orden exitosamente');
+        ELSE    
+	        INSERT INTO kallsonys_shipment (orderid, fname, lname, street, city, state, zipcode) VALUES (v_orderid, v_fname, v_lname, v_street, v_city, v_state, v_zipcode);
+	       
+	       
+			WHILE i < JSON_LENGTH(v_items) DO
+				-- get the current item and build an SQL statement
+				-- to pass it to a callback procedure
+				SET v_item := JSON_EXTRACT(v_items, CONCAT('$[', i, ']'));
+				SET v_itemid   := JSON_UNQUOTE(JSON_EXTRACT(v_item, '$.item_id'));
+				SET v_prodid   := JSON_UNQUOTE(JSON_EXTRACT(v_item, '$.producto_id'));
+				SET v_pname    := JSON_UNQUOTE(JSON_EXTRACT(v_item, '$.nombre_producto'));
+				SET v_partnum  := JSON_UNQUOTE(JSON_EXTRACT(v_item, '$.part_num'));
+				SET v_price    := JSON_UNQUOTE(JSON_EXTRACT(v_item, '$.precio'));
+				SET v_quantity := JSON_UNQUOTE(JSON_EXTRACT(v_item, '$.cantidad'));
+			    
+				INSERT INTO kallsonys_items (itemid, orderid, prodid, productname, partnum, price, quantity)
+			          VALUES (v_itemid, v_orderid, v_prodid, v_pname, v_partnum, v_price, v_quantity);
+				SET i := i + 1;
+			END WHILE;
+	       
+	       
+	        
+            RETURN JSON_OBJECT('estado', 'ok', 'mensaje', 'Se ha registrado la orden exitosamente');
         END IF;
     END IF;
+END ;;
+DELIMITER ;
+
+DELIMITER ;;
+CREATE DEFINER=`root`@`%` PROCEDURE `actualizar_orden`()
+BEGIN
+	UPDATE kallsonys.kallsonys_shipment
+		SET status = '1' 
+	WHERE status = '0'
+	ORDER BY RAND()
+	LIMIT 10;
 END ;;
 DELIMITER ;
 
@@ -138,6 +187,9 @@ ALTER USER 'user'@'%'
 IDENTIFIED BY '123456' ;
 GRANT Usage ON *.* TO 'user'@'%';
 FLUSH PRIVILEGES;
+
+ALTER USER 'root'@'%'
+IDENTIFIED BY 'abc123' ;
 
 GRANT Execute ON kallsonys.* TO 'user'@'%';
 FLUSH PRIVILEGES;
