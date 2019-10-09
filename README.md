@@ -13,8 +13,15 @@ La imagen cuenta con una Base de Datos MariaDB que expone lo siguiente:
 * Procedimiento almacenado **actualizar_orden**: Este procedimiento actualiza al siguiente estado 10 ordenes registradas en el sistema de manera aleatoria.
 * **Cron**: El contenedor cuenta con un Cron, por defecto apagado, con el cual se automatiza el paso entre los estados cada 10 minutos.
 
+## Estados del Envío
+A continuación se listan los estados por los que pasa el pedido y su estado previo
+
+* Recibido: Todas las solicitudes inician en este estado
+* En Proceso: 5 Solicitudes al azar pasa de Recibido a este estado
+* Devuelto: 1 Solicitud al azar pasa de En Proceso a este estado
+* Entregado: 3 Solicitudes al azar pasa de En Proceso a este estado
+
 ### Siguientes Realeases
-* [03/10/19] Se implementarán y comunicarán todos los estados que puede tener una orden de servicio.
 * [04/10/19] Se entregará una función que permite consultar hasta 100 ordenes registradas en el sistema de acuerdo a unos filtros establecidos.
 
 ## Installation
@@ -27,8 +34,8 @@ El siguiente comando a continuación es para ejecutar el contenedor por primera 
 $ docker run --name <nombre contenedor> -p <puerto expuesto>:3306 -d servientrega:latest
 ```
 Donde los parametros son como se describen a continuación:
-* **<nombre contenedor>**: Es el nombre con el que va a identificar al contenedor en adelante
-* **<puerto expuesto>**: Puerto por el cual puede realizar la conexión desde un Gestor de Base de datos o desde la propia aplicación
+* **\<nombre contenedor\>**: Es el nombre con el que va a identificar al contenedor en adelante
+* **\<puerto expuesto\>**: Puerto por el cual puede realizar la conexión desde un Gestor de Base de datos o desde la propia aplicación
 Para el caso en el que el contenedor se llame **servientrega** y conservemos el mismo puerto que está exponiendo el contenedor, **3306**, el comando a ejecutar la primera vez es:
 ```sh
 $ docker run --name servientrega -p 3306:3306 -d servientrega:latest
@@ -47,17 +54,18 @@ Los usuarios para la imagen compartida son:
 * **root**: Usuario administrador que para los entornos de pruebas estará disponible
 * **user**: Usuario entregado a la compañía kallsonys para el proceso de integración. Este será el único usuario disponible para la salida en producción y sus alcances son limitados.
 
-Las credenciales son
-| Usuario | Password |
-| ------ | ------ |
-| root | abc123 |
-| user | 123456 |
+Las credenciales son:
+
+|Usuario|Password|
+|------|------|
+|root|abc123|
+|user|123456|
 
 La contraseña del root puede ser seteada por medio de la línea de ambiente MYSQL_ROOT_PASSWORD. En este caso no respetará la contraseña indicada en este manual.
 
 ### Funciones.
 #### crear_orden
-Para crear Orden se deben recomienda ejecutar el script de la siguiente manera.
+Para crear Orden se recomienda ejecutar el script de la siguiente manera.
 ```sql
 SET @params := JSON_OBJECT(
 	'orden', '35',
