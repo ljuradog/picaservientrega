@@ -67,7 +67,7 @@ CREATE TABLE `kallsonys_shipment` (
   `city` varchar(50) DEFAULT NULL,
   `state` varchar(2) DEFAULT NULL,
   `zipcode` varchar(5) DEFAULT NULL,
-  `status` varchar(5) DEFAULT '0',
+  `status` varchar(20) DEFAULT 'Recibido',
   PRIMARY KEY (`orderid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -175,10 +175,46 @@ DELIMITER ;;
 CREATE DEFINER=`root`@`%` PROCEDURE `actualizar_orden`()
 BEGIN
 	UPDATE kallsonys.kallsonys_shipment
-		SET status = '1' 
-	WHERE status = '0'
+		SET status = 'Entregado' 
+	WHERE status = 'En Proceso'
 	ORDER BY RAND()
-	LIMIT 10;
+	LIMIT 3;
+	
+	UPDATE kallsonys.kallsonys_shipment
+		SET status = 'Devuelto' 
+	WHERE status = 'En Proceso'
+	ORDER BY RAND()
+	LIMIT 1;
+	
+	UPDATE kallsonys.kallsonys_shipment
+		SET status = 'En Proceso' 
+	WHERE status = 'Recibido'
+	ORDER BY RAND()
+	LIMIT 5;
+	
+END ;;
+DELIMITER ;
+
+DELIMITER ;;
+CREATE DEFINER=`root`@`%` PROCEDURE `kallsonys`.`listar_ordenes`(params BLOB)
+BEGIN
+	DECLARE v_orderid VARCHAR(20)
+        DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.orden'));
+    DECLARE v_fname VARCHAR(50)
+        DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.nombre'));
+    DECLARE v_lname VARCHAR(50)
+        DEFAULT JSON_UNQUOTE(JSON_EXTRACT(params, '$.apellido'));
+       
+    IF v_orderid IS NULL OR v_orderid = '' THEN
+    	select *
+	    from kallsonys_shipment
+	    ORDER BY 1 desc
+	    limit 100;
+    ELSE
+    	select *
+	    from kallsonys_shipment
+	    where orderid = v_orderid;
+    END IF;
 END ;;
 DELIMITER ;
 
